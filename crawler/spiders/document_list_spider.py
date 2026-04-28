@@ -36,27 +36,27 @@ class DocumentListSpider(scrapy.Spider):
             """
 
             cursor.execute(sql_query)
-            records = cursor.fetchall()
+            cursor.fetchall()
 
-            diff = 5 if env.CRAWL_DATA_ENV_DEV else 500
+            diff = 5 if env.CRAWL_DATA_ENV_DEV else 167920
 
-            if len(records) >= 2:
-                latest = records[0][0]
-                previous = records[1][0]
+            # if len(records) >= 2:
+            #     latest = records[0][0]
+            #     previous = records[1][0]
 
-                if latest != previous:
-                    diff = abs(latest - previous)
-                    logger.info(
-                        f"Phát hiện thay đổi: {previous} -> {latest}. Diff = {diff}"
-                    )
-                else:
-                    logger.info(
-                        f"Không có thay đổi tổng số. Sử dụng diff mặc định: {diff}"
-                    )
-            else:
-                logger.info(
-                    f"Không đủ dữ liệu lịch sử (cần 2 bản ghi). Sử dụng diff mặc định: {diff}"
-                )
+            #     if latest != previous:
+            #         diff = abs(latest - previous)
+            #         logger.info(
+            #             f"Phát hiện thay đổi: {previous} -> {latest}. Diff = {diff}"
+            #         )
+            #     else:
+            #         logger.info(
+            #             f"Không có thay đổi tổng số. Sử dụng diff mặc định: {diff}"
+            #         )
+            # else:
+            #     logger.info(
+            #         f"Không đủ dữ liệu lịch sử (cần 2 bản ghi). Sử dụng diff mặc định: {diff}"
+            #     )
 
             self.max_pages = math.ceil(diff / self.row_per_page) + 1
 
