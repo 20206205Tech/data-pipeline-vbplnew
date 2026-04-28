@@ -10,7 +10,7 @@ import env
 
 class DocumentTotalSpider(scrapy.Spider):
     name = "document_total"
-    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn"]
+    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn", "20206205.work.gd"]
 
     def start_requests(self):
         target_url = "https://vbpl-bientap-gateway.moj.gov.vn/api/qtdc/public/doc/all"

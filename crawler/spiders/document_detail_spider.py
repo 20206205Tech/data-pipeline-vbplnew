@@ -16,7 +16,7 @@ from utils.workflow_helper import fetch_and_lock_pending_tasks
 
 class DocumentDetailSpider(scrapy.Spider):
     name = "document_detail"
-    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn"]
+    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn", "20206205.work.gd"]
 
     def _get_connection(self):
         return psycopg2.connect(env.DATABASE_URL)

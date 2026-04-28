@@ -13,7 +13,7 @@ from utils.request_helper import make_vbpl_page_request
 
 class DocumentListSpider(scrapy.Spider):
     name = "document_list"
-    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn"]
+    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn", "20206205.work.gd"]
 
     def __init__(self, *args, **kwargs):
         super(DocumentListSpider, self).__init__(*args, **kwargs)
