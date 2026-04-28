@@ -61,9 +61,18 @@ def document_embedding_resource(success_item_ids: list, error_item_ids: list):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT item_id, status, effective_date, issuing_agency, document_number, issue_date, title, signer, position
-                    FROM "public"."document_info"
-                    WHERE item_id IN %s
+                    SELECT
+                        d.item_id,
+                        d.status,
+                        d.eff_from AS effective_date,
+                        d.agency_name AS issuing_agency,
+                        d.doc_num AS document_number,
+                        d.issue_date,
+                        d.title,
+                        (SELECT string_agg(di.person_name, ', ') FROM "public"."document_issues" di WHERE di.document_id = d.item_id) AS signer,
+                        (SELECT string_agg(di.job_title_name, ', ') FROM "public"."document_issues" di WHERE di.document_id = d.item_id) AS position
+                    FROM "public"."documents" d
+                    WHERE d.item_id IN %s
                     """,
                     (str_item_ids,),
                 )
@@ -73,7 +82,7 @@ def document_embedding_resource(success_item_ids: list, error_item_ids: list):
         except psycopg2.errors.UndefinedTable:
             conn.rollback()
         except Exception as e:
-            logger.error(f"Lỗi khi fetch document_info: {e}")
+            logger.error(f"Lỗi khi fetch data từ bảng documents: {e}")
             conn.rollback()
 
         dict_context_drive_ids = get_existing_drive_ids_from_db(
