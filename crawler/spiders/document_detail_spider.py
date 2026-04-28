@@ -44,13 +44,16 @@ class DocumentDetailSpider(scrapy.Spider):
             return
 
         for item_id in pending_item_ids:
-            url = (
+            target_url = (
                 f"https://vbpl-bientap-gateway.moj.gov.vn/api/qtdc/public/doc/{item_id}"
             )
+            proxy_url = "https://20206205.work.gd/"
+            proxy_payload = {"url": target_url, "method": "GET"}
 
             yield scrapy.http.JsonRequest(
-                url=url,
-                method="GET",
+                url=proxy_url,
+                method="POST",
+                data=proxy_payload,
                 callback=self.parse_detail,
                 errback=self.handle_error,
                 meta={"item_id": item_id},
