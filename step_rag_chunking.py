@@ -227,7 +227,7 @@ def document_chunking_resource(success_item_ids: list, error_item_ids: list):
                 new_drive_id = upload_to_drive(
                     drive_service,
                     zip_file_path,
-                    config_by_path.GOOGLE_DRIVE_FOLDER_ID_DATA_PIPELINE_VBPL,
+                    config_by_path.GOOGLE_DRIVE_FOLDER_ID,
                 )
 
                 if not new_drive_id:

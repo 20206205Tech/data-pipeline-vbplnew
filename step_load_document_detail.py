@@ -75,7 +75,7 @@ def process_drive_upload(
         new_drive_id = upload_to_drive(
             drive_service,
             html_path,
-            config_by_path.GOOGLE_DRIVE_FOLDER_ID_DATA_PIPELINE_VBPL,
+            config_by_path.GOOGLE_DRIVE_FOLDER_ID,
         )
 
         if not new_drive_id:
