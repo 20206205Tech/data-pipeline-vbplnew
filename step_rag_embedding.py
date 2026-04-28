@@ -57,6 +57,7 @@ def document_embedding_resource(success_item_ids: list, error_item_ids: list):
 
         dict_all_info = {}
         str_item_ids = tuple(str(id) for id in pending_item_ids)
+
         try:
             with conn.cursor() as cur:
                 cur.execute(
@@ -209,7 +210,11 @@ def document_embedding_resource(success_item_ids: list, error_item_ids: list):
                 for key in keys_to_add:
                     val = info_record.get(key)
                     if val:
-                        base_metadata[key] = str(val).strip()
+                        val_str = str(val).strip()
+                        # Giới hạn độ dài để tránh vượt quá giới hạn metadata của Pinecone (40KB)
+                        if len(val_str) > 1000:
+                            val_str = val_str[:1000] + "..."
+                        base_metadata[key] = val_str
 
                 for chunk_filename in chunk_files:
                     with open(
@@ -218,6 +223,16 @@ def document_embedding_resource(success_item_ids: list, error_item_ids: list):
                         text = f.read().strip()
                     if not text:
                         continue
+
+                    # Pinecone có giới hạn metadata là 40960 bytes (bao gồm cả nội dung text trong page_content)
+                    # Cắt ngắn text nếu quá dài để tránh lỗi 400
+                    text_bytes = text.encode("utf-8")
+                    if len(text_bytes) > 32000:
+                        logger.warning(
+                            f"⚠️ Chunk {chunk_filename} của {item_id} quá lớn ({len(text_bytes)} bytes), "
+                            "đang cắt ngắn để không vượt giới hạn Pinecone..."
+                        )
+                        text = text_bytes[:32000].decode("utf-8", errors="ignore")
 
                     chunk_metadata = base_metadata.copy()
                     chunk_metadata["source"] = chunk_filename
