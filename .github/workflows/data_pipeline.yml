@@ -1,0 +1,137 @@
+name: data_pipeline_trigger
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [data_pipeline_trigger]
+
+jobs:
+  data_pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Doppler CLI
+        uses: dopplerhq/cli-action@v1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Cache Scrapy HTTP Cache
+        uses: actions/cache@v4
+        with:
+          path: .scrapy
+          key: ${{ runner.os }}-scrapy-cache-${{ github.workflow }}
+          restore-keys: |
+            ${{ runner.os }}-scrapy-cache-
+
+      - name: step_setup_workflow
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_setup_workflow == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_setup_workflow.py
+
+      - name: step_crawl_document_total
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_crawl_document_total == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_crawl_document_total.py
+
+      - name: step_load_document_total
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_load_document_total == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_load_document_total.py
+
+      - name: step_crawl_document_list
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_crawl_document_list == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_crawl_document_list.py
+
+      - name: step_load_document_list
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_load_document_list == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_load_document_list.py
+
+      - name: step_crawl_document_detail
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_crawl_document_detail == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_crawl_document_detail.py
+
+      - name: step_load_document_detail
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_load_document_detail == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_load_document_detail.py
+
+      - name: step_extract_document_markdown
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_extract_document_markdown == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_extract_document_markdown.py
+
+      - name: step_rag_summary
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_rag_summary == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_rag_summary.py
+
+      - name: step_rag_chunking
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_rag_chunking == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_rag_chunking.py
+
+      - name: step_rag_context
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_rag_context == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_rag_context.py
+
+      - name: step_call_colab
+        # if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_rag_context == true }}
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_call_colab == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_call_colab.py
+
+      - name: step_rag_embedding
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.client_payload.steps_config.step_rag_embedding == true }}
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_rag_embedding.py
+
+      - name: step_clean_document_pending
+        if: always()
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler run -p 20206205tech -c prod -- uv run python step_clean_document_pending.py

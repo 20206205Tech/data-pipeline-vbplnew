@@ -1,0 +1,280 @@
+import os
+import shutil
+from datetime import datetime
+
+import dlt
+import psycopg2
+from langchain_core.messages import SystemMessage
+from loguru import logger
+
+import env
+from rag.llm import invoke_llm_chain
+from rag.prompt import contextualizer_prompt
+from utils.config_by_path import ConfigByPath
+from utils.document_helper import get_document_statuses_from_db, is_document_invalid
+from utils.google_drive import (
+    download_from_drive,
+    get_drive_file_md5,
+    get_drive_service,
+    upload_to_drive,
+)
+from utils.hash_helper import (
+    get_existing_drive_ids_from_db,
+    get_existing_hashes_from_db,
+)
+from utils.workflow_helper import (
+    fetch_and_lock_pending_tasks,
+    log_error_workflow_state,
+    log_workflow_state,
+)
+
+config_by_path = ConfigByPath(__file__)
+PATH_FOLDER_OUTPUT = config_by_path.PATH_FOLDER_OUTPUT
+
+
+def generate_chunk_context(summary_text, chunk_text):
+    """Sinh ngữ cảnh dẫn nhập cho từng chunk"""
+    messages = [
+        SystemMessage(
+            content=contextualizer_prompt.CONTEXTUALIZER_PROMPT.format(
+                summary=summary_text, chunk=chunk_text
+            )
+        )
+    ]
+    return invoke_llm_chain(messages)
+
+
+@dlt.resource(
+    name="document_context",
+    write_disposition="merge",
+    primary_key="item_id",
+    columns={"update_at": {"dedup_sort": "desc"}},
+)
+def document_context_resource(success_item_ids: list, error_item_ids: list):
+    try:
+        drive_service = get_drive_service()
+        conn = psycopg2.connect(env.DATABASE_URL)
+    except Exception as e:
+        logger.error(f"Lỗi khởi tạo kết nối Database/Drive: {e}")
+        return
+
+    try:
+        pending_item_ids = fetch_and_lock_pending_tasks(
+            conn=conn,
+            step_code=config_by_path.NAME,
+            limit=40,
+        )
+
+        if not pending_item_ids:
+            logger.info("🎉 Không có tài liệu nào cần tạo ngữ cảnh (contextualizing).")
+            return
+
+        dict_summary_drive_ids = get_existing_drive_ids_from_db(
+            conn, "document_summary", pending_item_ids, "drive_id"
+        )
+
+        dict_chunk_drive_ids = get_existing_drive_ids_from_db(
+            conn, "document_chunking", pending_item_ids, "drive_id"
+        )
+
+        dict_context_hashes = get_existing_hashes_from_db(
+            conn, "document_context", pending_item_ids, "summary_md5", "chunk_md5"
+        )
+
+        dict_statuses = get_document_statuses_from_db(conn, pending_item_ids)
+
+        for item_id in pending_item_ids:
+            item_workspace = os.path.join(PATH_FOLDER_OUTPUT, f"workspace_{item_id}")
+            zip_base_output_path = os.path.join(
+                PATH_FOLDER_OUTPUT, f"contextualized_{item_id}"
+            )
+            final_zip_path = f"{zip_base_output_path}.zip"
+
+            try:
+                raw_status = dict_statuses.get(str(item_id))
+                if is_document_invalid(raw_status):
+                    logger.info(
+                        f"⏭️ Bỏ qua {item_id}: Văn bản có trạng thái '{raw_status}'."
+                    )
+                    success_item_ids.append(item_id)
+                    continue
+
+                summary_drive_id = dict_summary_drive_ids.get(str(item_id))
+                chunk_drive_id = dict_chunk_drive_ids.get(str(item_id))
+
+                if not summary_drive_id or not chunk_drive_id:
+                    logger.warning(
+                        f"⚠️ Bỏ qua {item_id}: Thiếu dữ liệu Summary hoặc Chunks (không có drive_id)."
+                    )
+                    error_item_ids.append(item_id)
+                    continue
+
+                # 2. Lấy mã MD5 hiện tại của cả 2 file trực tiếp từ Google Drive API
+                current_summary_md5 = get_drive_file_md5(
+                    drive_service, summary_drive_id
+                )
+                current_chunk_md5 = get_drive_file_md5(drive_service, chunk_drive_id)
+
+                if not current_summary_md5 or not current_chunk_md5:
+                    logger.warning(
+                        f"⚠️ Bỏ qua {item_id}: Không lấy được MD5 từ Google Drive."
+                    )
+                    error_item_ids.append(item_id)
+                    continue
+
+                old_summary_md5, old_chunk_md5 = dict_context_hashes.get(
+                    str(item_id), (None, None)
+                )
+
+                # 4. TRẠM GÁC: Skip nếu cả Tóm tắt và Chunks đều không có thay đổi
+                if (
+                    old_summary_md5 == current_summary_md5
+                    and old_chunk_md5 == current_chunk_md5
+                ):
+                    logger.info(
+                        f"⏭️ Bỏ qua {item_id}: Cả Summary và Chunks không đổi, không cần sinh lại ngữ cảnh."
+                    )
+                    success_item_ids.append(item_id)
+                    continue
+
+                # 5. TIẾN HÀNH: Tải dữ liệu Tóm tắt
+                logger.info(f"📥 Đang tải dữ liệu tóm tắt và chunks cho: {item_id}")
+                summary_bytes = download_from_drive(drive_service, summary_drive_id)
+                summary_text = summary_bytes.decode("utf-8")
+
+                # 6. Thiết lập workspace, tải và giải nén Chunks Zip
+                extract_dir = os.path.join(item_workspace, "raw_chunks")
+                contextualized_dir = os.path.join(
+                    item_workspace, "contextualized_chunks"
+                )
+
+                os.makedirs(extract_dir, exist_ok=True)
+                os.makedirs(contextualized_dir, exist_ok=True)
+
+                zip_local_path = os.path.join(item_workspace, f"raw_{item_id}.zip")
+                zip_bytes = download_from_drive(drive_service, chunk_drive_id)
+
+                with open(zip_local_path, "wb") as f:
+                    f.write(zip_bytes)
+
+                shutil.unpack_archive(zip_local_path, extract_dir)
+
+                # 7. Duyệt qua từng chunk và tạo Context bằng LLM Fallback
+                chunk_files = [f for f in os.listdir(extract_dir) if f.endswith(".md")]
+                logger.info(
+                    f"🔍 Bắt đầu tạo ngữ cảnh cho {len(chunk_files)} đoạn (chunks)..."
+                )
+
+                item_has_error = False
+                for chunk_filename in chunk_files:
+                    raw_chunk_path = os.path.join(extract_dir, chunk_filename)
+                    contextualized_chunk_path = os.path.join(
+                        contextualized_dir, chunk_filename
+                    )
+
+                    with open(raw_chunk_path, "r", encoding="utf-8") as f:
+                        chunk_content = f.read().strip()
+
+                    if not chunk_content:
+                        continue
+
+                    logger.info(f"⏳ Đang sinh ngữ cảnh cho {chunk_filename}...")
+                    ai_context = generate_chunk_context(summary_text, chunk_content)
+
+                    if ai_context:
+                        final_chunk_content = f"BỐI CẢNH (CONTEXT):\n{ai_context}\n\nNỘI DUNG (CONTENT):\n{chunk_content}"
+                        with open(
+                            contextualized_chunk_path, "w", encoding="utf-8"
+                        ) as f:
+                            f.write(final_chunk_content)
+                    else:
+                        # 🚨 QUAN TRỌNG: Nếu LLM trả về None (tất cả provider đều lỗi)
+                        logger.error(
+                            f"❌ Thất bại hoàn toàn khi tạo ngữ cảnh cho {chunk_filename} của item {item_id}"
+                        )
+                        item_has_error = True
+                        break  # Dừng xử lý các chunk còn lại của item này
+
+                if item_has_error:
+                    error_item_ids.append(item_id)
+                    continue  # Chuyển sang item tiếp theo trong pending_item_ids
+
+                # 8. Chỉ đóng gói ZIP nếu tất cả chunk của item đó thành công
+                shutil.make_archive(zip_base_output_path, "zip", contextualized_dir)
+
+                # 9. Upload ZIP lên Google Drive
+                logger.info(f"☁️ Đang tải file Context Zip lên Google Drive...")
+                new_drive_id = upload_to_drive(
+                    drive_service,
+                    final_zip_path,
+                    config_by_path.GOOGLE_DRIVE_FOLDER_ID_DATA_PIPELINE_VBPL,
+                )
+
+                if not new_drive_id:
+                    logger.error(f"❌ Upload file Context Zip thất bại cho {item_id}")
+                    error_item_ids.append(item_id)
+                    continue
+
+                # 10. THÀNH CÔNG: Yield dữ liệu mới (lưu 2 input hash)
+                logger.success(f"✅ Đã xử lý ngữ cảnh thành công cho {item_id}")
+                success_item_ids.append(item_id)
+
+                yield {
+                    "item_id": item_id,
+                    "update_at": datetime.now().isoformat(),
+                    "drive_id": new_drive_id,
+                    "summary_md5": current_summary_md5,  # Lưu lại để làm trạm gác lần sau
+                    "chunk_md5": current_chunk_md5,  # Lưu lại để làm trạm gác lần sau
+                    # KHÔNG còn context_zip_hash nữa
+                }
+
+            except Exception as e:
+                logger.error(f"💥 Lỗi tại item {item_id}: {e}")
+                error_item_ids.append(item_id)
+
+            finally:
+                # Đảm bảo rác workspace và zip luôn được dọn dẹp sạch sẽ
+                if os.path.exists(item_workspace):
+                    shutil.rmtree(item_workspace, ignore_errors=True)
+                if os.path.exists(final_zip_path):
+                    os.remove(final_zip_path)
+
+    finally:
+        if "conn" in locals() and conn:
+            conn.close()
+
+
+def main():
+    pipeline = dlt.pipeline(
+        destination="postgres",
+        dataset_name="public",
+        pipeline_name=config_by_path.NAME,
+    )
+
+    success_item_ids = []
+    error_item_ids = []
+    start_time = datetime.now()
+
+    pipeline.run(document_context_resource(success_item_ids, error_item_ids))
+    # logger.info(f"Kết quả pipeline: {info}")
+
+    if success_item_ids:
+        log_workflow_state(
+            pipeline=pipeline,
+            item_ids=success_item_ids,
+            start_time=start_time,
+            end_time=datetime.now(),
+        )
+        logger.info(f"Đã xử lý thành công {len(success_item_ids)} items.")
+
+    if error_item_ids:
+        logger.error(
+            f"Có {len(error_item_ids)} items gặp lỗi và cần thu thập/chạy lại."
+        )
+        logger.warning(f"Danh sách lỗi: {error_item_ids}")
+
+        log_error_workflow_state(pipeline, error_item_ids, start_time)
+
+
+if __name__ == "__main__":
+    main()
