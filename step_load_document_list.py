@@ -11,6 +11,17 @@ from utils.workflow_helper import log_workflow_state
 config_by_path = ConfigByPath(__file__)
 
 
+def chunked_iterable(iterable, size):
+    batch = []
+    for item in iterable:
+        batch.append(item)
+        if len(batch) >= size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
+
 @dlt.resource(name="dim_doc_type", write_disposition="merge", primary_key="id")
 def get_dim_doc_types(records):
     seen = set()
@@ -116,32 +127,49 @@ def main():
         pipeline_name=config_by_path.NAME,
     )
 
-    records = list(yield_jsonl_records(PATH_FILE_OUTPUT))
-    item_ids = [r.get("item_id") for r in records if r.get("item_id")]
+    BATCH_SIZE = 500
+    all_item_ids = []
+    total_loaded = 0
 
-    if not item_ids:
+    logger.info(f"Bắt đầu load dữ liệu với BATCH_SIZE = {BATCH_SIZE}...")
+
+    for batch_idx, batch in enumerate(
+        chunked_iterable(yield_jsonl_records(PATH_FILE_OUTPUT), BATCH_SIZE)
+    ):
+        item_ids = [r.get("item_id") for r in batch if r.get("item_id")]
+        if not item_ids:
+            continue
+
+        all_item_ids.extend(item_ids)
+
+        # Load data vào database cho batch hiện tại
+        logger.info(
+            f"Đang chuẩn bị load batch {batch_idx + 1} ({len(batch)} records) vào Database..."
+        )
+        load_info = pipeline.run(
+            [
+                get_dim_doc_types(batch),
+                get_dim_eff_statuses(batch),
+                get_dim_majors(batch),
+                get_documents(batch),
+                get_document_majors(batch),
+                get_document_related_files(batch),
+            ]
+        )
+        logger.info(f"Hoàn thành batch {batch_idx + 1}.")
+        total_loaded += len(batch)
+
+    if not all_item_ids:
         logger.warning("Không có item_id nào được thu thập. Bỏ qua ghi log.")
         return
 
-    # Load data vào database
-    logger.info(f"Đang chuẩn bị load {len(records)} records vào Database...")
-    load_info = pipeline.run(
-        [
-            get_dim_doc_types(records),
-            get_dim_eff_statuses(records),
-            get_dim_majors(records),
-            get_documents(records),
-            get_document_majors(records),
-            get_document_related_files(records),
-        ]
-    )
-    logger.info(f"Kết quả dlt pipeline run: {load_info}")
+    logger.info(f"Hoàn thành load tổng cộng {total_loaded} records vào Database.")
 
     # Ghi log workflow
-    if item_ids:
+    if all_item_ids:
         now = datetime.now()
         log_workflow_state(
-            pipeline=pipeline, item_ids=item_ids, start_time=now, end_time=now
+            pipeline=pipeline, item_ids=all_item_ids, start_time=now, end_time=now
         )
 
 
