@@ -97,6 +97,7 @@ class DocumentDetailSpider(scrapy.Spider):
                 logger.warning(
                     f"⚠️ API trả về không thành công hoặc không có data cho item: {item_id}"
                 )
+                logger.debug(data)
                 return
 
             item_data = data["data"]
