@@ -28,7 +28,7 @@ class DocumentListSpider(scrapy.Spider):
             connection = psycopg2.connect(env.DATABASE_URL)
             cursor = connection.cursor()
 
-            sql_query = f"""
+            sql_query = """
                 SELECT total_count
                 FROM "public"."document_total"
                 ORDER BY update_at DESC
@@ -38,7 +38,8 @@ class DocumentListSpider(scrapy.Spider):
             cursor.execute(sql_query)
             records = cursor.fetchall()
 
-            diff = 5 if env.CRAWL_DATA_ENV_DEV else 500
+            default_total = 5 if env.CRAWL_DATA_ENV_DEV else 167920
+            diff = default_total
 
             if len(records) >= 2:
                 latest = records[0][0]
@@ -51,11 +52,21 @@ class DocumentListSpider(scrapy.Spider):
                     )
                 else:
                     logger.info(
-                        f"Không có thay đổi tổng số. Sử dụng diff mặc định: {diff}"
+                        f"Không có thay đổi tổng số. Sử dụng diff mặc định: {default_total}"
                     )
+
+            elif len(records) == 1:
+                latest = records[0][0]
+                # Nếu chỉ có 1 bản ghi, lấy abs giữa bản ghi đó và 0 (coi như chưa có dữ liệu cũ)
+                # Nếu bạn muốn so sánh với số mặc định, thay 0 bằng default_total: abs(latest - default_total)
+                diff = abs(latest - 0)
+                logger.info(
+                    f"Chỉ có 1 bản ghi tổng số (latest = {latest}). Diff = {diff}"
+                )
+
             else:
                 logger.info(
-                    f"Không đủ dữ liệu lịch sử (cần 2 bản ghi). Sử dụng diff mặc định: {diff}"
+                    f"Không có bản ghi nào. Sử dụng diff mặc định: {default_total}"
                 )
 
             self.max_pages = math.ceil(diff / self.row_per_page) + 1
