@@ -2,6 +2,7 @@ import dataclasses
 
 import dlt
 
+import env
 import workflow_config
 from utils.config_by_path import ConfigByPath
 
@@ -16,10 +17,13 @@ def workflow_resource():
         yield item_dict
 
 
+
+
 def main():
-    workflow_config.workflow_to_mermaid(workflow_config.workflow_data)
-    workflow_config.workflow_to_json(workflow_config.workflow_data)
-    workflow_config.workflow_to_github_action(workflow_config.workflow_data)
+    if env.ENVIRONMENT == "development":
+        workflow_config.workflow_to_mermaid(workflow_config.workflow_data)
+        workflow_config.workflow_to_json(workflow_config.workflow_data)
+        workflow_config.workflow_to_github_action(workflow_config.workflow_data)
 
     pipeline = dlt.pipeline(
         destination="postgres",
