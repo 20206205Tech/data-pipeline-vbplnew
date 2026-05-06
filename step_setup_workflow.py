@@ -17,8 +17,6 @@ def workflow_resource():
         yield item_dict
 
 
-
-
 def main():
     if env.ENVIRONMENT == "development":
         workflow_config.workflow_to_mermaid(workflow_config.workflow_data)
