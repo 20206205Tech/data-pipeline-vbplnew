@@ -16,7 +16,7 @@ from utils.workflow_helper import fetch_and_lock_pending_tasks
 
 class DocumentDetailSpider(scrapy.Spider):
     name = "document_detail"
-    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn"]
+    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn", "20206205.work.gd"]
 
     def _get_connection(self):
         return psycopg2.connect(env.DATABASE_URL)
@@ -31,6 +31,7 @@ class DocumentDetailSpider(scrapy.Spider):
                     conn=conn,
                     step_code="step_crawl_document_detail",
                     limit=2 if env.CRAWL_DATA_ENV_DEV else 50,
+                    # limit=2 if env.CRAWL_DATA_ENV_DEV else 50 * 15 * 4 ,
                 )
         except Exception as e:
             logger.error(f"Lỗi khi lấy logic database từ PostgreSQL: {e}")
@@ -44,13 +45,16 @@ class DocumentDetailSpider(scrapy.Spider):
             return
 
         for item_id in pending_item_ids:
-            url = (
+            target_url = (
                 f"https://vbpl-bientap-gateway.moj.gov.vn/api/qtdc/public/doc/{item_id}"
             )
+            proxy_url = "https://20206205.work.gd/"
+            proxy_payload = {"url": target_url, "method": "GET"}
 
             yield scrapy.http.JsonRequest(
-                url=url,
-                method="GET",
+                url=proxy_url,
+                method="POST",
+                data=proxy_payload,
                 callback=self.parse_detail,
                 errback=self.handle_error,
                 meta={"item_id": item_id},

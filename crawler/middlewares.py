@@ -3,13 +3,8 @@
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-import json
-import os
-import random
-
 # useful for handling different item types with a single interface
 from scrapy import signals
-from scrapy.exceptions import NotConfigured
 
 
 class CrawlerSpiderMiddleware:
@@ -101,105 +96,3 @@ class CrawlerDownloaderMiddleware:
 
     def spider_opened(self, spider):
         spider.logger.info("Spider opened: %s" % spider.name)
-
-
-class JsonProxyDownloaderMiddleware:
-    def __init__(self, proxy_list):
-        self.proxy_list = proxy_list
-
-    @classmethod
-    def from_crawler(cls, crawler):
-        # Lấy đường dẫn file từ settings, mặc định là 'proxies.json' ở thư mục gốc
-        proxy_file_path = crawler.settings.get("PROXY_FILE_PATH", "proxies.json")
-
-        if not os.path.exists(proxy_file_path):
-            raise NotConfigured(f"Không tìm thấy file proxy tại: {proxy_file_path}")
-
-        # Đọc file proxies.json
-        with open(proxy_file_path, "r", encoding="utf-8") as f:
-            raw_proxies = json.load(f)
-
-        # Format lại thành cấu trúc URL chuẩn cho HTTP proxy
-        proxy_list = []
-        for p in raw_proxies:
-            proxy_url = f"http://{p['ip_address']}:{p['port']}"
-            proxy_list.append(proxy_url)
-
-        if not proxy_list:
-            raise NotConfigured(
-                "File proxies.json trống, không có proxy nào được load."
-            )
-
-        return cls(proxy_list)
-
-    def process_request(self, request, spider):
-        # Nếu request đã có proxy (ví dụ set cứng trong spider), thì bỏ qua
-        if "proxy" in request.meta:
-            return None
-
-        # Chọn ngẫu nhiên một proxy từ danh sách
-        proxy = random.choice(self.proxy_list)
-        request.meta["proxy"] = proxy
-
-        # In log để dễ debug
-        spider.logger.debug(f"Đang sử dụng proxy: {proxy} cho URL: {request.url}")
-
-
-class TxtProxyDownloaderMiddleware:
-    def __init__(self, proxy_list):
-        self.proxy_list = proxy_list
-
-    @classmethod
-    def from_crawler(cls, crawler):
-        # Đổi mặc định sang proxies.txt
-        proxy_file_path = crawler.settings.get("PROXY_FILE_PATH", "proxies.txt")
-
-        if not os.path.exists(proxy_file_path):
-            raise NotConfigured(f"Không tìm thấy file proxy tại: {proxy_file_path}")
-
-        proxy_list = []
-        with open(proxy_file_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue  # Bỏ qua dòng trống hoặc dòng comment
-
-                # Xử lý định dạng IP:PORT@USER:PASS
-                if "@" in line:
-                    try:
-                        ip_port, user_pass = line.split("@", 1)
-                        # Scrapy cần định dạng: http://user:pass@ip:port
-                        proxy_url = f"http://{user_pass}@{ip_port}"
-                        proxy_list.append(proxy_url)
-                    except ValueError:
-                        # Bỏ qua nếu dòng bị sai định dạng
-                        continue
-                else:
-                    # Hỗ trợ cả định dạng không có pass: IP:PORT
-                    proxy_url = f"http://{line}"
-                    proxy_list.append(proxy_url)
-
-        if not proxy_list:
-            raise NotConfigured("File proxies.txt trống hoặc không hợp lệ.")
-
-        return cls(proxy_list)
-
-    def process_request(self, request, spider):
-        # Bỏ qua nếu request đã có proxy
-        if "proxy" in request.meta:
-            return None
-
-        proxy = random.choice(self.proxy_list)
-        request.meta["proxy"] = proxy
-        # spider.logger.debug(f"Đang sử dụng proxy: {proxy}")
-
-    def process_exception(self, request, exception, spider):
-        # Nếu gặp lỗi kết nối (timeout, refused...), xóa proxy hỏng đi để Scrapy lấy proxy mới ở lần retry sau
-        if "proxy" in request.meta:
-            failed_proxy = request.meta["proxy"]
-            spider.logger.warning(
-                f"Lỗi kết nối proxy. Đang xóa {failed_proxy} để thử lại..."
-            )
-            del request.meta["proxy"]
-
-        return None
