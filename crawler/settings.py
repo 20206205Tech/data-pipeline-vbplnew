@@ -7,6 +7,9 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
+PROXY_FILE_PATH = "proxies.json"
+
+
 BOT_NAME = "crawler"
 
 SPIDER_MODULES = ["crawler.spiders"]
@@ -49,6 +52,14 @@ DOWNLOAD_DELAY = 1
 # DOWNLOADER_MIDDLEWARES = {
 #    "crawler.middlewares.CrawlerDownloaderMiddleware": 543,
 # }
+
+DOWNLOADER_MIDDLEWARES = {
+    # Tắt Middleware mặc định (nếu cần thiết, hoặc cứ để ưu tiên thấp hơn)
+    # Kích hoạt Custom Proxy Middleware vừa viết
+    "crawler.middlewares.JsonProxyDownloaderMiddleware": 543,
+    # Chắc chắn rằng HttpProxyMiddleware mặc định của Scrapy chạy sau nó để xử lý meta['proxy']
+    "scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware": 544,
+}
 
 # Enable or disable extensions
 # See https://docs.scrapy.org/en/latest/topics/extensions.html

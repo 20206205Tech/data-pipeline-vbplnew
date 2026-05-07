@@ -10,14 +10,12 @@ import env
 
 class DocumentTotalSpider(scrapy.Spider):
     name = "document_total"
-    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn", "20206205.work.gd"]
+    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn"]
 
     def start_requests(self):
-        target_url = "https://vbpl-bientap-gateway.moj.gov.vn/api/qtdc/public/doc/all"
-        target_payload = {"pageSize": 1, "pageNumber": 1}
-        proxy_url = "https://20206205.work.gd/"
-        proxy_payload = {"url": target_url, "method": "POST", "json": target_payload}
-        yield JsonRequest(url=proxy_url, data=proxy_payload, callback=self.parse)
+        url = "https://vbpl-bientap-gateway.moj.gov.vn/api/qtdc/public/doc/all"
+        payload = {"pageSize": 1, "pageNumber": 1}
+        yield JsonRequest(url=url, data=payload, callback=self.parse)
 
     def parse(self, response):
         if env.CRAWL_DATA_OPEN_IN_BROWSER:
