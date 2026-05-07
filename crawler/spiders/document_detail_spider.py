@@ -1,4 +1,5 @@
 import os
+import random
 from datetime import datetime
 
 import psycopg2
@@ -16,7 +17,9 @@ from utils.workflow_helper import fetch_and_lock_pending_tasks
 
 class DocumentDetailSpider(scrapy.Spider):
     name = "document_detail"
-    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn", "20206205.work.gd"]
+
+    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn"]
+    allowed_domains.extend(env.PROXY_GATEWAYS)
 
     def _get_connection(self):
         return psycopg2.connect(env.DATABASE_URL)
@@ -30,8 +33,7 @@ class DocumentDetailSpider(scrapy.Spider):
                 pending_item_ids = fetch_and_lock_pending_tasks(
                     conn=conn,
                     step_code="step_crawl_document_detail",
-                    limit=2 if env.CRAWL_DATA_ENV_DEV else 50,
-                    # limit=2 if env.CRAWL_DATA_ENV_DEV else 50 * 15 * 4 ,
+                    limit=2 if env.CRAWL_DATA_ENV_DEV else 50 * 3,
                 )
         except Exception as e:
             logger.error(f"Lỗi khi lấy logic database từ PostgreSQL: {e}")
@@ -48,7 +50,7 @@ class DocumentDetailSpider(scrapy.Spider):
             target_url = (
                 f"https://vbpl-bientap-gateway.moj.gov.vn/api/qtdc/public/doc/{item_id}"
             )
-            proxy_url = "https://20206205.work.gd/"
+            proxy_url = f"https://{random.choice(env.PROXY_GATEWAYS)}/"
             proxy_payload = {"url": target_url, "method": "GET"}
 
             yield scrapy.http.JsonRequest(

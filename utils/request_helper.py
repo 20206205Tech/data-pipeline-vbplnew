@@ -1,3 +1,5 @@
+import random
+
 import scrapy
 from loguru import logger
 
@@ -11,7 +13,7 @@ def make_vbpl_page_request(spider_instance, page, row_per_page=None):
     target_url = "https://vbpl-bientap-gateway.moj.gov.vn/api/qtdc/public/doc/all"
     target_payload = {"pageSize": row_per_page, "pageNumber": page}
 
-    proxy_url = "https://20206205.work.gd/"
+    proxy_url = f"https://{random.choice(env.PROXY_GATEWAYS)}/"
     proxy_payload = {"url": target_url, "method": "POST", "json": target_payload}
 
     logger.debug(f"Đang tạo request cho trang {page}: {target_url} (qua proxy)")

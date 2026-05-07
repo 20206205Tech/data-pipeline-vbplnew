@@ -1,3 +1,4 @@
+import random
 from datetime import datetime
 
 import scrapy
@@ -10,12 +11,14 @@ import env
 
 class DocumentTotalSpider(scrapy.Spider):
     name = "document_total"
-    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn", "20206205.work.gd"]
+
+    allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn"]
+    allowed_domains.extend(env.PROXY_GATEWAYS)
 
     def start_requests(self):
         target_url = "https://vbpl-bientap-gateway.moj.gov.vn/api/qtdc/public/doc/all"
         target_payload = {"pageSize": 1, "pageNumber": 1}
-        proxy_url = "https://20206205.work.gd/"
+        proxy_url = f"https://{random.choice(env.PROXY_GATEWAYS)}/"
         proxy_payload = {"url": target_url, "method": "POST", "json": target_payload}
         yield JsonRequest(url=proxy_url, data=proxy_payload, callback=self.parse)
 
