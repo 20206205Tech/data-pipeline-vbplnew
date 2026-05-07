@@ -7,8 +7,6 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-PROXY_FILE_PATH = "proxies.json"
-
 
 BOT_NAME = "crawler"
 
@@ -53,11 +51,26 @@ DOWNLOAD_DELAY = 1
 #    "crawler.middlewares.CrawlerDownloaderMiddleware": 543,
 # }
 
+# DOWNLOADER_MIDDLEWARES = {
+#     # Tắt Middleware mặc định (nếu cần thiết, hoặc cứ để ưu tiên thấp hơn)
+#     # Kích hoạt Custom Proxy Middleware vừa viết
+#     "crawler.middlewares.JsonProxyDownloaderMiddleware": 543,
+#     # Chắc chắn rằng HttpProxyMiddleware mặc định của Scrapy chạy sau nó để xử lý meta['proxy']
+#     "scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware": 544,
+# }
+
+# PROXY_FILE_PATH = "proxies.json"
+
+# Đổi tên file thành proxies.txt
+PROXY_FILE_PATH = "proxies.txt"
+
 DOWNLOADER_MIDDLEWARES = {
-    # Tắt Middleware mặc định (nếu cần thiết, hoặc cứ để ưu tiên thấp hơn)
-    # Kích hoạt Custom Proxy Middleware vừa viết
-    "crawler.middlewares.JsonProxyDownloaderMiddleware": 543,
-    # Chắc chắn rằng HttpProxyMiddleware mặc định của Scrapy chạy sau nó để xử lý meta['proxy']
+    # Tắt hoặc bỏ qua middleware cũ (nếu bạn chưa xóa code cũ)
+    # "crawler.middlewares.JsonProxyDownloaderMiddleware": None,
+    # Kích hoạt Middleware đọc file txt
+    "crawler.middlewares.TxtProxyDownloaderMiddleware": 543,
+    # BẮT BUỘC: Middleware mặc định này phải chạy sau (số lớn hơn)
+    # để nó tự động nhận diện account/password từ chuỗi URL mình vừa tạo
     "scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware": 544,
 }
 
