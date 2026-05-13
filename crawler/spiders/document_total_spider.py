@@ -1,12 +1,11 @@
-import random
 from datetime import datetime
 
 import scrapy
 from loguru import logger
-from scrapy.http import JsonRequest
 from scrapy.utils.response import open_in_browser
 
 import env
+from utils.request_helper import make_vbpl_page_request
 
 
 class DocumentTotalSpider(scrapy.Spider):
@@ -16,11 +15,9 @@ class DocumentTotalSpider(scrapy.Spider):
     allowed_domains.extend(env.PROXY_GATEWAYS)
 
     def start_requests(self):
-        target_url = "https://vbpl-bientap-gateway.moj.gov.vn/api/qtdc/public/doc/all"
-        target_payload = {"pageSize": 1, "pageNumber": 1}
-        proxy_url = f"https://{random.choice(env.PROXY_GATEWAYS)}/"
-        proxy_payload = {"url": target_url, "method": "POST", "json": target_payload}
-        yield JsonRequest(url=proxy_url, data=proxy_payload, callback=self.parse)
+        yield make_vbpl_page_request(
+            self, page=1, row_per_page=1, sortDirection=None, sortBy=None, isNew=None
+        )
 
     def parse(self, response):
         if env.CRAWL_DATA_OPEN_IN_BROWSER:
