@@ -11,7 +11,16 @@ def make_vbpl_page_request(spider_instance, page, row_per_page=None):
         row_per_page = 10 if env.CRAWL_DATA_ENV_DEV else 50
 
     target_url = "https://vbpl-bientap-gateway.moj.gov.vn/api/qtdc/public/doc/all"
-    target_payload = {"pageSize": row_per_page, "pageNumber": page}
+    
+
+
+    target_payload = {
+        "sortDirection": "desc",
+        "sortBy": "issueDate",
+        "pageSize": row_per_page,
+        "pageNumber": page,
+        "isNew": True  
+    }
 
     proxy_url = f"https://{random.choice(env.PROXY_GATEWAYS)}/"
     proxy_payload = {"url": target_url, "method": "POST", "json": target_payload}
