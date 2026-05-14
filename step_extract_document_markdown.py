@@ -53,7 +53,7 @@ def convert_html_to_markdown(html_content):
     primary_key="item_id",
     columns={"update_at": {"dedup_sort": "desc"}},
 )
-def document_markdown_resource(success_item_ids: list, error_item_ids: list):
+def document_markdown_resource(success_item_ids: list, error_item_ids: list, fast_forward_item_ids: list):
     try:
         drive_service = get_drive_service()
         conn = psycopg2.connect(env.DATABASE_URL)
@@ -106,8 +106,8 @@ def document_markdown_resource(success_item_ids: list, error_item_ids: list):
                 html_text = html_bytes.decode("utf-8")
 
                 if html_text.strip() == HTML_EMPTY:
-                    logger.info(f"⏭️ Bỏ qua {item_id}: Văn bản có nội dung rỗng.")
-                    success_item_ids.append(item_id)
+                    logger.info(f"⏭️ Bỏ qua {item_id}: Văn bản có nội dung rỗng. Fast-forward lên ID 14.")
+                    fast_forward_item_ids.append(item_id)
                     continue
 
                 md_content = convert_html_to_markdown(html_text)
@@ -189,9 +189,14 @@ def main():
 
     success_item_ids = []
     error_item_ids = []
+    fast_forward_item_ids = []
     start_time = datetime.now()
 
-    pipeline.run(document_markdown_resource(success_item_ids, error_item_ids))
+    pipeline.run(
+        document_markdown_resource(
+            success_item_ids, error_item_ids, fast_forward_item_ids
+        )
+    )
     # logger.info(f"Kết quả pipeline: {info}")
 
     if success_item_ids:
@@ -202,6 +207,21 @@ def main():
             end_time=datetime.now(),
         )
         logger.info(f"Đã xử lý thành công {len(success_item_ids)} items.")
+
+    if fast_forward_item_ids:
+        from utils.workflow_helper import document_state_resource
+
+        pipeline.run(
+            document_state_resource(
+                workflow_id=14,
+                item_ids=fast_forward_item_ids,
+                start_time=start_time,
+                end_time=datetime.now(),
+            )
+        )
+        logger.info(
+            f"⏩ Đã fast-forward {len(fast_forward_item_ids)} items không có nội dung lên bước cuối (ID 14)."
+        )
 
     if error_item_ids:
         logger.error(f"Có {len(error_item_ids)} items gặp lỗi và cần thu thập lại.")
