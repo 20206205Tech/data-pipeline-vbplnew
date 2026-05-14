@@ -44,7 +44,7 @@ def get_dim_eff_statuses(records):
             yield {"id": id_val, "code": eff.get("code"), "name": eff.get("name")}
 
 
-@dlt.resource(name="dim_major", write_disposition="merge", primary_key="id")
+@dlt.resource(name="dim_major", write_disposition="merge", primary_key="code")
 def get_dim_majors(records):
     seen = set()
     for r in records:
