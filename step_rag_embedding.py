@@ -64,7 +64,7 @@ def document_embedding_resource(success_item_ids: list, error_item_ids: list):
                     """
                     SELECT
                         d.item_id,
-                        d.status,
+                        s.name AS status,
                         d.eff_from AS effective_date,
                         d.agency_name AS issuing_agency,
                         d.doc_num AS document_number,
@@ -73,6 +73,7 @@ def document_embedding_resource(success_item_ids: list, error_item_ids: list):
                         (SELECT string_agg(di.person_name, ', ') FROM "public"."document_issues" di WHERE di.document_id = d.item_id) AS signer,
                         (SELECT string_agg(di.job_title_name, ', ') FROM "public"."document_issues" di WHERE di.document_id = d.item_id) AS position
                     FROM "public"."documents" d
+                    LEFT JOIN "public"."dim_eff_status" s ON d.eff_status_id = s.id
                     WHERE d.item_id IN %s
                     """,
                     (str_item_ids,),

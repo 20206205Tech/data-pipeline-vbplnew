@@ -27,9 +27,10 @@ def main():
             query = """
                 SELECT ds.item_id
                 FROM "public"."document_state" ds
-                JOIN "public"."document_info" di ON ds.item_id = di.item_id
+                JOIN "public"."documents" d ON ds.item_id = d.item_id
+                JOIN "public"."dim_eff_status" s ON d.eff_status_id = s.id
                 WHERE ds.workflow_id = %s
-                  AND di.status IN %s
+                  AND s.name IN %s
                 LIMIT 200
             """
             cur.execute(query, (current_step_id, tuple(STATUS_TO_SKIP)))

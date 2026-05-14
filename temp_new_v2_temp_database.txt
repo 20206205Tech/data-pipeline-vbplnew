@@ -1,0 +1,104 @@
+
+[BẢNG]: _dlt_loads
+  - Cột: load_id
+  - Cột: schema_name
+  - Cột: status
+  - Cột: inserted_at
+  - Cột: schema_version_hash
+
+[BẢNG]: _dlt_pipeline_state
+  - Cột: version
+  - Cột: engine_version
+  - Cột: pipeline_name
+  - Cột: state
+  - Cột: created_at
+  - Cột: version_hash
+  - Cột: _dlt_load_id
+  - Cột: _dlt_id
+
+[BẢNG]: _dlt_version
+  - Cột: version
+  - Cột: engine_version
+  - Cột: inserted_at
+  - Cột: schema_name
+  - Cột: version_hash
+  - Cột: schema
+
+[BẢNG]: dim_doc_type
+  - Cột: id
+  - Cột: code
+  - Cột: name
+  - Cột: _dlt_load_id
+  - Cột: _dlt_id
+
+[BẢNG]: dim_eff_status
+  - Cột: id
+  - Cột: code
+  - Cột: name
+  - Cột: _dlt_load_id
+  - Cột: _dlt_id
+
+[BẢNG]: dim_major
+  - Cột: id
+  - Cột: code
+  - Cột: name
+  - Cột: short_name
+  - Cột: _dlt_load_id
+  - Cột: _dlt_id
+
+[BẢNG]: document_majors
+  - Cột: document_id
+  - Cột: major_id
+  - Cột: _dlt_load_id
+  - Cột: _dlt_id
+
+[BẢNG]: document_state
+  - Cột: workflow_id
+  - Cột: item_id
+  - Cột: start_time
+  - Cột: end_time
+  - Cột: workflow_version
+  - Cột: _dlt_load_id
+  - Cột: _dlt_id
+
+[BẢNG]: document_total
+  - Cột: update_at
+  - Cột: total_count
+  - Cột: _dlt_load_id
+  - Cột: _dlt_id
+
+[BẢNG]: documents
+  - Cột: item_id
+  - Cột: title
+  - Cột: doc_num
+  - Cột: doc_type_id
+  - Cột: eff_status_id
+  - Cột: issue_date
+  - Cột: eff_from
+  - Cột: updated_date
+  - Cột: is_new
+  - Cột: is_lw
+  - Cột: _dlt_load_id
+  - Cột: _dlt_id
+  - Cột: has_original_pdf
+  - Cột: lang
+  - Cột: review_status
+  - Cột: drive_id
+  - Cột: view_count
+  - Cột: document_content_file_name
+  - Cột: document_content_file_doc_name
+  - Cột: is_old
+  - Cột: is_effect_all_document
+  - Cột: has_content
+  - Cột: has_ai_processed
+  - Cột: agency_name
+  - Cột: status
+
+[BẢNG]: workflows
+  - Cột: id
+  - Cột: code
+  - Cột: description
+  - Cột: workflow_version
+  - Cột: _dlt_load_id
+  - Cột: _dlt_id
+  - Cột: parent_id

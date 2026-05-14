@@ -4,6 +4,7 @@ from loguru import logger
 # Danh sách các trạng thái cần bỏ qua
 STATUS_TO_SKIP = [
     "Hết hiệu lực toàn bộ",
+    "Hết hiệu lực",
     "Ngưng hiệu lực",
     "Không còn phù hợp",
 ]
@@ -20,8 +21,8 @@ def is_document_invalid(status: str) -> bool:
 
 def get_document_statuses_from_db(conn, item_ids: list) -> dict:
     """
-    Lấy trạng thái (status) từ bảng document_info cho nhiều item cùng lúc.
-    Trả về: Dictionary { 'item_id': 'status' }
+    Lấy trạng thái (name từ bảng dim_eff_status) cho nhiều item cùng lúc bằng cách JOIN với bảng documents.
+    Trả về: Dictionary { 'item_id': 'status_name' }
     """
     if not item_ids:
         return {}
@@ -32,9 +33,10 @@ def get_document_statuses_from_db(conn, item_ids: list) -> dict:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT item_id, status
-                FROM "public"."document_info"
-                WHERE item_id IN %s
+                SELECT d.item_id, s.name
+                FROM "public"."documents" d
+                LEFT JOIN "public"."dim_eff_status" s ON d.eff_status_id = s.id
+                WHERE d.item_id IN %s
                 """,
                 (str_item_ids,),
             )
@@ -44,7 +46,7 @@ def get_document_statuses_from_db(conn, item_ids: list) -> dict:
     except psycopg2.errors.UndefinedTable:
         conn.rollback()
     except Exception as e:
-        logger.debug(f"Lỗi truy vấn status từ bảng document_info: {e}")
+        logger.debug(f"Lỗi truy vấn status từ bảng documents/dim_eff_status: {e}")
         conn.rollback()
 
     return {}

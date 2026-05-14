@@ -79,6 +79,18 @@ def get_documents(records):
             "is_new": r.get("isNew"),
             "is_lw": r.get("isLw"),
             "source_document_id": r.get("sourceDocumentId"),
+            # "has_original_pdf": r.get("hasOriginalPdf"),
+            # "lang": r.get("lang"),
+            # "review_status": r.get("reviewStatus"),
+            # "view_count": r.get("viewCount"),
+            # "document_content_file_name": r.get("documentContentFileName"),
+            # "document_content_file_doc_name": r.get("documentContentFileDocName"),
+            # "is_old": r.get("isOld"),
+            # "is_effect_all_document": r.get("isEffectAllDocument"),
+            # "has_content": r.get("hasContent"),
+            # "has_ai_processed": r.get("hasAIProcessed"),
+            # "agency_name": r.get("agencyName"),
+            # "status": r.get("status"),
         }
 
 
