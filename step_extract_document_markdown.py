@@ -25,6 +25,16 @@ from utils.workflow_helper import (
 config_by_path = ConfigByPath(__file__)
 PATH_FOLDER_OUTPUT = config_by_path.PATH_FOLDER_OUTPUT
 
+HTML_EMPTY = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+</head>
+<body>
+</body>
+</html>
+""".strip()
 
 def convert_html_to_markdown(html_content):
     """Chuyển đổi HTML sang Markdown với cấu hình chuẩn"""
@@ -94,6 +104,11 @@ def document_markdown_resource(success_item_ids: list, error_item_ids: list):
 
                 html_bytes = download_from_drive(drive_service, drive_content_file_id)
                 html_text = html_bytes.decode("utf-8")
+
+                if html_text.strip() == HTML_EMPTY:
+                    logger.info(f"⏭️ Bỏ qua {item_id}: Văn bản có nội dung rỗng.")
+                    success_item_ids.append(item_id)
+                    continue
 
                 md_content = convert_html_to_markdown(html_text)
 
