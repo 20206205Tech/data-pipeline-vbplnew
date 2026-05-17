@@ -3,6 +3,7 @@ from datetime import datetime
 
 import dlt
 import psycopg2
+from bs4 import BeautifulSoup
 from loguru import logger
 from markdownify import markdownify
 
@@ -25,16 +26,23 @@ from utils.workflow_helper import (
 config_by_path = ConfigByPath(__file__)
 PATH_FOLDER_OUTPUT = config_by_path.PATH_FOLDER_OUTPUT
 
-HTML_EMPTY = """
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-</head>
-<body>
-</body>
-</html>
-""".strip()
+
+def is_html_empty(html_text: str) -> bool:
+    """Kiểm tra chuỗi HTML xem thẻ <body> có rỗng hay không."""
+    if not html_text:
+        return True
+
+    soup = BeautifulSoup(html_text, "html.parser")
+    body = soup.find("body")
+
+    if not body:
+        return True
+
+    has_no_text = not body.get_text(strip=True)
+    has_no_children = len(body.find_all()) == 0
+
+    return has_no_text and has_no_children
+
 
 def convert_html_to_markdown(html_content):
     """Chuyển đổi HTML sang Markdown với cấu hình chuẩn"""
@@ -53,7 +61,9 @@ def convert_html_to_markdown(html_content):
     primary_key="item_id",
     columns={"update_at": {"dedup_sort": "desc"}},
 )
-def document_markdown_resource(success_item_ids: list, error_item_ids: list, fast_forward_item_ids: list):
+def document_markdown_resource(
+    success_item_ids: list, error_item_ids: list, fast_forward_item_ids: list
+):
     try:
         drive_service = get_drive_service()
         conn = psycopg2.connect(env.DATABASE_URL)
@@ -105,8 +115,10 @@ def document_markdown_resource(success_item_ids: list, error_item_ids: list, fas
                 html_bytes = download_from_drive(drive_service, drive_content_file_id)
                 html_text = html_bytes.decode("utf-8")
 
-                if html_text.strip() == HTML_EMPTY:
-                    logger.info(f"⏭️ Bỏ qua {item_id}: Văn bản có nội dung rỗng. Fast-forward lên ID 14.")
+                if is_html_empty(html_text):
+                    logger.info(
+                        f"⏭️ Bỏ qua {item_id}: Văn bản có nội dung rỗng. Fast-forward lên ID 14."
+                    )
                     fast_forward_item_ids.append(item_id)
                     continue
 
