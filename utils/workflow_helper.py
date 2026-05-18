@@ -108,7 +108,7 @@ def fetch_and_lock_pending_tasks(conn, step_code: str, limit: int = None) -> lis
             limit = 2
         else:
             limit = 9999
-            limit = 50
+            limit = 150
 
     logger.info(f"Bắt đầu lấy và khóa task cho step_code='{step_code}', limit={limit}")
 

@@ -71,7 +71,6 @@ def document_markdown_resource(
         pending_item_ids = fetch_and_lock_pending_tasks(
             conn=conn,
             step_code=config_by_path.NAME,
-            limit=50 * 30,
         )
 
         if not pending_item_ids:
