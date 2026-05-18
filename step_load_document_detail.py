@@ -28,6 +28,7 @@ def process_drive_upload(
     success_item_ids,
     error_item_ids,
     fast_forward_item_ids,
+    fast_forward_to_parent_item_ids,
 ):
     success_records = []
     all_item_ids = [r.get("item_id") for r in records if r.get("item_id")]
@@ -53,7 +54,10 @@ def process_drive_upload(
             )
             record["drive_id"] = None
             success_records.append(record)
-            fast_forward_item_ids.append(item_id)
+            if record.get("status") == "404":
+                fast_forward_to_parent_item_ids.append(item_id)
+            else:
+                fast_forward_item_ids.append(item_id)
             continue
 
         local_md5 = calculate_file_md5(html_path)
@@ -178,6 +182,7 @@ def main():
     success_item_ids = []
     error_item_ids = []
     fast_forward_item_ids = []
+    fast_forward_to_parent_item_ids = []
     start_time = datetime.now()
 
     conn = None
@@ -193,6 +198,7 @@ def main():
             success_item_ids,
             error_item_ids,
             fast_forward_item_ids,
+            fast_forward_to_parent_item_ids,
         )
 
         if success_records:
@@ -235,6 +241,19 @@ def main():
         )
         logger.info(
             f"⏩ Đã fast-forward {len(fast_forward_item_ids)} items không có nội dung lên bước cuối."
+        )
+
+    if fast_forward_to_parent_item_ids:
+        pipeline.run(
+            document_state_resource(
+                workflow_id=workflow_config.STEP_RAG_CONTEXT.id,
+                item_ids=fast_forward_to_parent_item_ids,
+                start_time=start_time,
+                end_time=datetime.now(),
+            )
+        )
+        logger.info(
+            f"⏩ Đã fast-forward {len(fast_forward_to_parent_item_ids)} items 404 lên parent ID {workflow_config.STEP_RAG_CONTEXT.id} để bước RAG_EMBEDDING thực hiện xóa vector."
         )
 
     if error_item_ids:

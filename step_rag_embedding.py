@@ -65,6 +65,7 @@ def document_embedding_resource(success_item_ids: list, error_item_ids: list):
                     SELECT
                         d.item_id,
                         s.name AS status,
+                        d.status AS doc_status,
                         d.eff_from AS effective_date,
                         d.agency_name AS issuing_agency,
                         d.doc_num AS document_number,
@@ -103,6 +104,7 @@ def document_embedding_resource(success_item_ids: list, error_item_ids: list):
             try:
                 info_record = dict_all_info.get(str(item_id), {})
                 raw_status = info_record.get("status")
+                doc_status = info_record.get("doc_status")
 
                 safe_status = (
                     raw_status.strip()
@@ -110,9 +112,9 @@ def document_embedding_resource(success_item_ids: list, error_item_ids: list):
                     else "Chưa xác định"
                 )
 
-                if is_document_invalid(raw_status):
+                if is_document_invalid(raw_status) or doc_status == "404":
                     logger.info(
-                        f"🗑️ Tài liệu {item_id} có trạng thái '{raw_status}'. Đang tiến hành xóa khỏi Vector DB..."
+                        f"🗑️ Tài liệu {item_id} có trạng thái '{raw_status}' hoặc doc_status '{doc_status}'. Đang tiến hành xóa khỏi Vector DB..."
                     )
 
                     try:

@@ -80,6 +80,14 @@ class DocumentDetailSpider(scrapy.Spider):
                 )
                 raise CloseSpider(f"server_error_{response.status}")
 
+            if response.status == 404:
+                logger.warning(f"⚠️ Item {item_id} trả về 404 (Không tồn tại).")
+                yield {
+                    "item_id": item_id,
+                    "status": "404",
+                    "update_at": datetime.now().isoformat(),
+                }
+
     def parse_detail(self, response):
         if env.CRAWL_DATA_OPEN_IN_BROWSER:
             open_in_browser(response)
