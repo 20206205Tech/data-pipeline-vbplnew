@@ -18,7 +18,7 @@ def make_vbpl_page_request(spider_instance, page, row_per_page=None, **kwargs):
         "sortBy": "issueDate",
         "pageSize": row_per_page,
         "pageNumber": page,
-        "isNew": True,
+        # "isNew": True,
     }
 
     # Ghi đè hoặc thêm bớt tham số từ kwargs
@@ -38,4 +38,4 @@ def make_vbpl_page_request(spider_instance, page, row_per_page=None, **kwargs):
         data=proxy_payload,
         callback=spider_instance.parse,
         meta={"current_page": page},
-    )
+    )
