@@ -40,7 +40,7 @@ class DocumentListSpider(scrapy.Spider):
             cursor.execute(sql_query)
             records = cursor.fetchall()
 
-            default_total = 5 if env.CRAWL_DATA_ENV_DEV else 1000
+            default_total = 5 if env.CRAWL_DATA_ENV_DEV else 100
             diff = default_total
 
             if len(records) >= 2:
