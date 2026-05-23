@@ -483,7 +483,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.14.3" },
-    { name = "dlt", extras = ["postgres"], specifier = ">=1.24.0" },
+    { name = "dlt", extras = ["postgres"], specifier = ">=1.27.0" },
     { name = "environs", specifier = ">=14.6.0" },
     { name = "google-api-python-client", specifier = ">=2.193.0" },
     { name = "google-auth-httplib2", specifier = ">=0.3.0" },
@@ -535,7 +535,7 @@ wheels = [
 
 [[package]]
 name = "dlt"
-version = "1.25.0"
+version = "1.27.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -564,9 +564,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "tzdata" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ae/6c/a9142c33f631f94b9ae233b76c9e59bff15a367597955369e63e6098584b/dlt-1.25.0.tar.gz", hash = "sha256:86ecc24f506c2e08d150d174390a1302cb01ba576c522e2ef3d9708d5789105c", size = 982603, upload-time = "2026-04-15T07:28:40.47Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bb/80/4cc5a1af42e2b9aa3b4a7a8285f1f28fd889a2270bf7c76f812295bbec5b/dlt-1.27.0.tar.gz", hash = "sha256:cec18a34386150ac1620b2f1b5aa160f08e171ec0609af5da573792277f5218c", size = 1069777, upload-time = "2026-05-18T21:07:19.941Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/9b/8c1bc26014729e1f49c17c2988458985b93914f54de5bd52a0d547655a96/dlt-1.25.0-py3-none-any.whl", hash = "sha256:a32efddb871eacded32f10ae6b539d85956fda04d1c6f824d8e29a63c8c64095", size = 1238592, upload-time = "2026-04-15T07:28:42.769Z" },
+    { url = "https://files.pythonhosted.org/packages/76/23/26e6dcc639bd74025e6b54bb5af140a0a7582047e6b848d072cb947b271a/dlt-1.27.0-py3-none-any.whl", hash = "sha256:69ac35c56f9b319ab3ae5378df2bc199bf746073df287fdd17994f44efd27ad0", size = 1347146, upload-time = "2026-05-18T21:07:23.631Z" },
 ]
 
 [package.optional-dependencies]
