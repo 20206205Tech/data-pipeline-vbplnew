@@ -21,6 +21,17 @@ from utils.workflow_helper import (
 config_by_path = ConfigByPath(__file__)
 
 
+def chunked_iterable(iterable, size):
+    batch = []
+    for item in iterable:
+        batch.append(item)
+        if len(batch) >= size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
+
 def process_drive_upload(
     records,
     conn,
@@ -31,7 +42,12 @@ def process_drive_upload(
     fast_forward_to_parent_item_ids,
 ):
     success_records = []
-    all_item_ids = [r.get("item_id") for r in records if r.get("item_id")]
+    # Lấy item_id, fallback về id nếu spider truyền trực tiếp raw data
+    all_item_ids = [
+        r.get("item_id") or str(r.get("id"))
+        for r in records
+        if r.get("item_id") or r.get("id")
+    ]
 
     if not all_item_ids:
         return []
@@ -42,9 +58,11 @@ def process_drive_upload(
     )
 
     for record in records:
-        item_id = record.get("item_id")
+        item_id = record.get("item_id") or str(record.get("id"))
         if not item_id:
             continue
+
+        record["item_id"] = item_id  # Chuẩn hóa lại key để dùng cho dlt resource
 
         html_path = os.path.join(PATH_FOLDER_OUTPUT, f"{item_id}.html")
 
@@ -95,6 +113,93 @@ def process_drive_upload(
     return success_records
 
 
+# ==========================================
+# CÁC DLT RESOURCES BÓC TÁCH DIMENSIONS (Kế thừa từ List)
+# ==========================================
+
+
+@dlt.resource(name="dim_doc_type", write_disposition="merge", primary_key="id")
+def get_dim_doc_types(records):
+    seen = set()
+    for r in records:
+        doc = r.get("docType") or {}
+        id_val = doc.get("id")
+        if id_val and id_val not in seen:
+            seen.add(id_val)
+            yield {"id": id_val, "code": doc.get("code"), "name": doc.get("name")}
+
+
+@dlt.resource(name="dim_eff_status", write_disposition="merge", primary_key="id")
+def get_dim_eff_statuses(records):
+    seen = set()
+    for r in records:
+        eff = r.get("effStatus") or {}
+        id_val = eff.get("id")
+        if id_val and id_val not in seen:
+            seen.add(id_val)
+            yield {"id": id_val, "code": eff.get("code"), "name": eff.get("name")}
+
+
+@dlt.resource(name="dim_major", write_disposition="merge", primary_key="code")
+def get_dim_majors(records):
+    seen = set()
+    for r in records:
+        for m in r.get("documentMajors") or []:
+            mt = m.get("majorType") or {}
+            id_val = m.get("id")
+            if id_val and id_val not in seen:
+                seen.add(id_val)
+                yield {
+                    "id": id_val,
+                    "code": mt.get("code"),
+                    "name": mt.get("name"),
+                    "short_name": mt.get("shortName"),
+                }
+
+
+@dlt.resource(
+    name="document_majors",
+    write_disposition="merge",
+    primary_key=["document_id", "major_id"],
+)
+def get_document_majors(records):
+    seen = set()
+    for r in records:
+        doc_id = r.get("item_id")
+        for m in r.get("documentMajors") or []:
+            major_id = m.get("id")
+            key = (doc_id, major_id)
+            if doc_id and major_id and key not in seen:
+                seen.add(key)
+                yield {"document_id": doc_id, "major_id": major_id}
+
+
+@dlt.resource(
+    name="document_related_files", write_disposition="merge", primary_key="id"
+)
+def get_document_related_files(records):
+    seen = set()
+    for r in records:
+        doc_id = r.get("item_id")
+        for f in r.get("documentRelatedList") or []:
+            file_id = f.get("id")
+            if file_id and file_id not in seen:
+                seen.add(file_id)
+                yield {
+                    "id": file_id,
+                    "document_id": doc_id,
+                    "file_name": f.get("fileName"),
+                    "related_type": f.get("relatedType"),
+                    "file_title": f.get("fileTitle"),
+                    "file_order": f.get("fileOrder"),
+                }
+
+
+# ==========================================
+# CÁC DLT RESOURCES CHI TIẾT (Detail)
+# ==========================================
+
+
 @dlt.resource(
     name="documents",
     write_disposition="merge",
@@ -110,6 +215,21 @@ def get_document_details(records):
         yield {
             "item_id": r.get("item_id"),
             "drive_id": r.get("drive_id"),
+            # Bổ sung các trường từ API Detail
+            "title": r.get("title"),
+            "doc_num": r.get("docNum"),
+            "doc_abs": r.get("docAbs"),
+            "doc_type_id": (r.get("docType") or {}).get("id"),
+            "eff_status_id": (r.get("effStatus") or {}).get("id"),
+            "issue_date": r.get("issueDate"),
+            "eff_from": r.get("effFrom"),
+            "eff_to": r.get("effTo"),
+            "public_date": r.get("publicDate"),
+            "updated_date": r.get("updatedDate"),
+            "is_new": r.get("isNew"),
+            "is_lw": r.get("isLw"),
+            "source_document_id": r.get("sourceDocumentId"),
+            # Các trường gốc của Detail
             "view_count": r.get("viewCount"),
             "document_content_file_name": r.get("documentContentFileName"),
             "document_content_file_doc_name": r.get("documentContentFileDocName"),
@@ -172,53 +292,67 @@ def main():
         pipeline_name=config_by_path.NAME,
     )
 
-    records = list(yield_jsonl_records(PATH_FILE_OUTPUT))
-    logger.info(f"Tổng số dòng cần xử lý từ file JSONL: {len(records)}")
-
-    if not records:
-        logger.info("🎉 Không có dữ liệu để xử lý.")
-        return
-
+    BATCH_SIZE = (
+        100  # Nên đặt nhỏ hơn List vì Detail có kèm theo upload lên Google Drive
+    )
     success_item_ids = []
     error_item_ids = []
     fast_forward_item_ids = []
     fast_forward_to_parent_item_ids = []
+    total_loaded = 0
     start_time = datetime.now()
 
-    conn = None
-    try:
-        conn = psycopg2.connect(env.DATABASE_URL)
-        drive_service = get_drive_service()
+    logger.info(f"Bắt đầu load dữ liệu với BATCH_SIZE = {BATCH_SIZE}...")
+    drive_service = get_drive_service()
 
-        # Tiền xử lý Upload Drive
-        success_records = process_drive_upload(
-            records,
-            conn,
-            drive_service,
-            success_item_ids,
-            error_item_ids,
-            fast_forward_item_ids,
-            fast_forward_to_parent_item_ids,
-        )
+    for batch_idx, batch in enumerate(
+        chunked_iterable(yield_jsonl_records(PATH_FILE_OUTPUT), BATCH_SIZE)
+    ):
+        conn = None
+        try:
+            conn = psycopg2.connect(env.DATABASE_URL)
 
-        if success_records:
-            logger.info(
-                f"Đang load {len(success_records)} records vào Database qua dlt..."
+            # Tiền xử lý Upload Drive cho từng Batch
+            success_records = process_drive_upload(
+                batch,
+                conn,
+                drive_service,
+                success_item_ids,
+                error_item_ids,
+                fast_forward_item_ids,
+                fast_forward_to_parent_item_ids,
             )
-            load_info = pipeline.run(
-                [
-                    get_document_details(success_records),
-                    get_document_issues(success_records),
-                    get_document_references(success_records),
-                ]
-            )
-            logger.info(f"Kết quả dlt pipeline run: {load_info}")
 
-    except Exception as e:
-        logger.error(f"Lỗi khi xử lý pipeline: {e}")
-    finally:
-        if conn:
-            conn.close()
+            if success_records:
+                logger.info(
+                    f"Đang chuẩn bị load batch {batch_idx + 1} ({len(success_records)} records) vào Database..."
+                )
+                load_info = pipeline.run(
+                    [
+                        get_dim_doc_types(success_records),
+                        get_dim_eff_statuses(success_records),
+                        get_dim_majors(success_records),
+                        get_document_details(success_records),
+                        get_document_majors(success_records),
+                        get_document_related_files(success_records),
+                        get_document_issues(success_records),
+                        get_document_references(success_records),
+                    ]
+                )
+                logger.info(f"Hoàn thành batch {batch_idx + 1}.")
+                total_loaded += len(success_records)
+
+        except Exception as e:
+            logger.error(f"Lỗi khi xử lý pipeline ở batch {batch_idx + 1}: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    if total_loaded == 0 and not error_item_ids:
+        logger.info("🎉 Không có dữ liệu để xử lý.")
+        return
+    else:
+        logger.info(f"Hoàn thành load tổng cộng {total_loaded} records vào Database.")
 
     # Ghi log workflow
     if success_item_ids:
