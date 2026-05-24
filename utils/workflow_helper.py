@@ -151,7 +151,7 @@ def fetch_and_lock_pending_tasks(conn, step_code: str, limit: int = None) -> lis
         return locked_items
 
 
-def get_workflow_item_count(
+def get_document_state_count_by_workflow(
     pipeline: dlt.Pipeline,
 ) -> List[Tuple[int, int]]:
     query = """
@@ -205,6 +205,91 @@ def get_workflow_item_count(
     except Exception as e:
         logger.error(f"Lỗi database khi lấy thống kê workflow: {e}")
         raise
+
+
+def get_document_eff_status_summary(
+    pipeline: dlt.Pipeline,
+) -> List[Tuple[int, int, int]]:
+    query = """
+
+SELECT
+COUNT(*) AS total_all,
+COUNT(eff_status_id) AS total_not_null,
+SUM(CASE WHEN eff_status_id IS NULL THEN 1 ELSE 0 END) AS total_null
+FROM public.documents;
+    """
+
+    try:
+        with pipeline.sql_client() as client:
+            results = client.execute_sql(query)
+
+            if not results:
+                logger.info("Không có dữ liệu để thống kê eff_status_id.")
+                return []
+
+            logger.success("Đã lấy thành công thống kê eff_status_id")
+            for total_all, total_not_null, total_null in results:
+                logger.info(
+                    f"Tổng tất cả={total_all}, không NULL={total_not_null}, NULL={total_null}"
+                )
+
+            return results
+
+    except Exception as e:
+        logger.error(f"Lỗi database khi lấy thống kê NULL: {e}")
+        raise
+
+
+def get_null_eff_status_documents(
+    pipeline: dlt.Pipeline,
+    limit: int = 20,
+) -> List[Tuple[str, Optional[str], Optional[str], Optional[datetime]]]:
+    query = f"""
+        SELECT item_id, title, doc_num, updated_date
+        FROM public.documents
+        WHERE eff_status_id IS NULL
+        ORDER BY updated_date DESC NULLS LAST, item_id ASC
+        LIMIT {limit};
+    """
+
+    try:
+        with pipeline.sql_client() as client:
+            results = client.execute_sql(query)
+
+            if not results:
+                logger.info("Không tìm thấy document nào có eff_status_id NULL.")
+                return []
+
+            for item_id, title, doc_num, updated_date in results:
+                logger.info(
+                    f"NULL item_id={item_id}, title={title}, doc_num={doc_num}, updated_date={updated_date}"
+                )
+
+            return results
+
+    except Exception as e:
+        logger.error(f"Lỗi database khi lấy danh sách document NULL: {e}")
+        raise
+
+
+def check_status_with_document_count(pipeline: dlt.Pipeline) -> None:
+    query = """
+        SELECT
+            s.id,
+            s.name,
+            s.code,
+            COUNT(d.item_id) AS document_count
+        FROM "public"."dim_eff_status" s
+        LEFT JOIN "public"."documents" d ON d.eff_status_id = s.id
+        GROUP BY s.id, s.name, s.code
+        ORDER BY s.id;
+    """
+
+    with pipeline.sql_client() as client:
+        rows = client.execute_sql(query)
+
+        for row in rows:
+            print(row)
 
 
 def log_error_workflow_state(
