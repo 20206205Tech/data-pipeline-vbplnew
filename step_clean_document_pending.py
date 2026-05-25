@@ -60,8 +60,9 @@ def main():
     else:
         logger.info("Không có document nào bị treo.")
 
-    get_document_state_count_by_workflow(pipeline)
     get_document_eff_status_summary(pipeline)
+
+    get_document_state_count_by_workflow(pipeline)
     # check_status_with_document_count(pipeline)
 
     # get_null_eff_status_documents(pipeline)

@@ -214,7 +214,6 @@ def get_document_eff_status_summary(
     pipeline: dlt.Pipeline,
 ) -> List[Tuple[int, int, int]]:
     query = """
-
 SELECT
 COUNT(*) AS total_all,
 COUNT(eff_status_id) AS total_not_null,
