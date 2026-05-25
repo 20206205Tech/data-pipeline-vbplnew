@@ -5,7 +5,7 @@ from loguru import logger
 STATUS_TO_SKIP = [
     #   'Còn hiệu lực',
     "Không còn phù hợp",
-    "Hết hiệu lực một phần",
+    # "Hết hiệu lực một phần",
     #   'Ngưng hiệu lực một phần',
     "Ngưng hiệu lực",
     #   'Chưa có hiệu lực',
