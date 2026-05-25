@@ -3,10 +3,13 @@ from loguru import logger
 
 # Danh sách các trạng thái cần bỏ qua
 STATUS_TO_SKIP = [
-    "Hết hiệu lực toàn bộ",
-    "Hết hiệu lực",
-    "Ngưng hiệu lực",
+    #   'Còn hiệu lực',
     "Không còn phù hợp",
+    "Hết hiệu lực một phần",
+    #   'Ngưng hiệu lực một phần',
+    "Ngưng hiệu lực",
+    #   'Chưa có hiệu lực',
+    "Hết hiệu lực toàn bộ",
 ]
 
 

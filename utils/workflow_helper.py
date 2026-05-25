@@ -294,8 +294,41 @@ def check_status_with_document_count(pipeline: dlt.Pipeline) -> None:
         with pipeline.sql_client() as client:
             rows = client.execute_sql(query)
 
+            if not rows:
+                logger.info("Không có dữ liệu status để hiển thị biểu đồ.")
+                return
+
+            logger.success("Đã lấy thành công thống kê document theo status.")
+
+            # In ra log chi tiết (như phiên bản cũ)
             for row in rows:
-                print(row)
+                logger.info(
+                    f"{row[1]}({row[2]}): {row[3]}"
+                    # f"ID: {row[0]}, Name: {row[1]}, Code: {row[2]}, Count: {row[3]}"
+                )
+
+            # --- TÍCH HỢP VẼ BIỂU ĐỒ BẰNG PLOTEXT ---
+
+            # Tách dữ liệu: Trục X là Tên trạng thái (hoặc Mã Code), Trục Y là Số lượng
+            # Ở đây dùng Mã code (row[2]) cho trục X vì nó ngắn gọn, hiển thị terminal không bị đè chữ.
+            # Nếu thích dùng tên, bạn đổi thành row[1].
+            status_codes = [str(row[2]) for row in rows]
+            document_counts = [row[3] for row in rows]
+
+            plt.clear_figure()  # Xóa bộ đệm cũ
+            plt.bar(status_codes, document_counts)
+
+            plt.title("Thống Kê Số Lượng Document Theo Trạng Thái Hiệu Lực")
+            plt.xlabel("Mã Trạng Thái (Code)")
+            plt.ylabel("Số Lượng Document (Count)")
+
+            # Tuỳ chỉnh kích thước và theme
+            plt.plotsize(80, 25)
+            plt.theme("clear")
+
+            # Hiển thị
+            plt.show()
+
     except Exception as e:
         if "does not exist" in str(e):
             logger.warning(
