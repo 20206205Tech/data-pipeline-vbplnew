@@ -43,8 +43,12 @@ PINECONE_INDEX_NAME = "dev-vbpl" if ENVIRONMENT == "development" else "prod-vbpl
 DATA_PIPELINE_VBPLNEW_DATABASE_URL = env.str("DATA_PIPELINE_VBPLNEW_DATABASE_URL")
 
 DATABASE_URL = DATA_PIPELINE_VBPLNEW_DATABASE_URL
-# if CRAWL_DATA_ENV_DEV:
-#     DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/postgres"
+
+
+if CRAWL_DATA_ENV_DEV:
+    DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/postgres"
+
+
 DESTINATION__POSTGRES__CREDENTIALS = DATABASE_URL.replace("-pooler", "")
 os.environ["DESTINATION__POSTGRES__CREDENTIALS"] = DESTINATION__POSTGRES__CREDENTIALS
 

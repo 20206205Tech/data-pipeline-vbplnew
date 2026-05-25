@@ -203,6 +203,9 @@ def get_document_state_count_by_workflow(
             return results
 
     except Exception as e:
+        if "does not exist" in str(e):
+            logger.warning("Bảng public.document_state chưa được tạo.")
+            return []
         logger.error(f"Lỗi database khi lấy thống kê workflow: {e}")
         raise
 
@@ -236,6 +239,9 @@ FROM public.documents;
             return results
 
     except Exception as e:
+        if "does not exist" in str(e):
+            logger.warning("Bảng public.documents chưa được tạo.")
+            return []
         logger.error(f"Lỗi database khi lấy thống kê NULL: {e}")
         raise
 
@@ -285,11 +291,20 @@ def check_status_with_document_count(pipeline: dlt.Pipeline) -> None:
         ORDER BY s.id;
     """
 
-    with pipeline.sql_client() as client:
-        rows = client.execute_sql(query)
+    try:
+        with pipeline.sql_client() as client:
+            rows = client.execute_sql(query)
 
-        for row in rows:
-            print(row)
+            for row in rows:
+                print(row)
+    except Exception as e:
+        if "does not exist" in str(e):
+            logger.warning(
+                "Bảng public.dim_eff_status hoặc public.documents chưa được tạo."
+            )
+            return
+        logger.error(f"Lỗi database khi lấy thống kê status: {e}")
+        raise
 
 
 def log_error_workflow_state(

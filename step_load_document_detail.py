@@ -140,20 +140,20 @@ def get_dim_eff_statuses(records):
             yield {"id": id_val, "code": eff.get("code"), "name": eff.get("name")}
 
 
-@dlt.resource(name="dim_major", write_disposition="merge", primary_key="code")
+@dlt.resource(name="dim_major", write_disposition="merge", primary_key="id")
 def get_dim_majors(records):
     seen = set()
     for r in records:
         for m in r.get("documentMajors") or []:
-            mt = m.get("majorType") or {}
+            mt = m.get("majorType") or m
             id_val = m.get("id")
             if id_val and id_val not in seen:
                 seen.add(id_val)
                 yield {
                     "id": id_val,
                     "code": mt.get("code"),
-                    "name": mt.get("name"),
-                    "short_name": mt.get("shortName"),
+                    "name": mt.get("name") or m.get("name"),
+                    "short_name": mt.get("shortName") or m.get("shortName"),
                 }
 
 
