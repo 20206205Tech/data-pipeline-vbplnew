@@ -94,7 +94,7 @@ def document_markdown_resource(
                     logger.info(
                         f"⏭️ Bỏ qua {item_id}: Văn bản có trạng thái '{raw_status}'."
                     )
-                    success_item_ids.append(item_id)
+                    fast_forward_item_ids.append(item_id)
                     continue
 
                 file_name = f"{item_id}.md"
@@ -230,9 +230,7 @@ def main():
                 end_time=datetime.now(),
             )
         )
-        logger.info(
-            f"⏩ Đã fast-forward {len(fast_forward_item_ids)} items không có nội dung lên bước cuối (ID 14)."
-        )
+        logger.info(f"⏩ Đã fast-forward {len(fast_forward_item_ids)} items.")
 
     if error_item_ids:
         logger.error(f"Có {len(error_item_ids)} items gặp lỗi và cần thu thập lại.")
