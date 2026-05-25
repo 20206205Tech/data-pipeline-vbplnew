@@ -323,6 +323,11 @@ def main():
                 fast_forward_to_parent_item_ids,
             )
 
+            # Đóng kết nối để giải phóng các transaction và table locks trong PostgreSQL trước khi DLT chạy
+            if conn:
+                conn.close()
+                conn = None
+
             if success_records:
                 logger.info(
                     f"Đang chuẩn bị load batch {batch_idx + 1} ({len(success_records)} records) vào Database..."
