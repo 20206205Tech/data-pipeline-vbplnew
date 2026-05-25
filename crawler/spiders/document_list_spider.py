@@ -89,7 +89,7 @@ class DocumentListSpider(scrapy.Spider):
                 cursor.close()
                 connection.close()
 
-    def start_requests(self):
+    async def start(self):
         yield make_vbpl_page_request(self, page=1, row_per_page=self.row_per_page)
 
     def parse(self, response):

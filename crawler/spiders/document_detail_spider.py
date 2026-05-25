@@ -24,7 +24,7 @@ class DocumentDetailSpider(scrapy.Spider):
     def _get_connection(self):
         return psycopg2.connect(env.DATABASE_URL)
 
-    def start_requests(self):
+    async def start(self):
         pending_item_ids = []
         conn = None
         try:

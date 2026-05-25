@@ -14,7 +14,7 @@ class DocumentTotalSpider(scrapy.Spider):
     allowed_domains = ["vbpl-bientap-gateway.moj.gov.vn"]
     allowed_domains.extend(env.PROXY_GATEWAYS)
 
-    def start_requests(self):
+    async def start(self):
         yield make_vbpl_page_request(
             self, page=1, row_per_page=1, sortDirection=None, sortBy=None, isNew=None
         )
