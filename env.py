@@ -38,7 +38,7 @@ os.environ["LANGSMITH_TRACING"] = "false"
 PINECONE_API_KEY = env.str("PINECONE_API_KEY")
 
 
-PINECONE_INDEX_NAME = "dev-vbpl" if ENVIRONMENT == "development" else "prod-vbpl"
+PINECONE_INDEX_NAME = "dev-vbplnew" if ENVIRONMENT == "development" else "prod-vbplnew"
 
 DATA_PIPELINE_VBPLNEW_DATABASE_URL = env.str("DATA_PIPELINE_VBPLNEW_DATABASE_URL")
 
