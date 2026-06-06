@@ -210,39 +210,39 @@ def get_document_state_count_by_workflow(
         raise
 
 
-def get_document_eff_status_summary(
-    pipeline: dlt.Pipeline,
-) -> List[Tuple[int, int, int]]:
-    query = """
-SELECT
-COUNT(*) AS total_all,
-COUNT(eff_status_id) AS total_not_null,
-SUM(CASE WHEN eff_status_id IS NULL THEN 1 ELSE 0 END) AS total_null
-FROM public.documents;
-    """
+# def get_document_eff_status_summary(
+#     pipeline: dlt.Pipeline,
+# ) -> List[Tuple[int, int, int]]:
+#     query = """
+# SELECT
+# COUNT(*) AS total_all,
+# COUNT(eff_status_id) AS total_not_null,
+# SUM(CASE WHEN eff_status_id IS NULL THEN 1 ELSE 0 END) AS total_null
+# FROM public.documents;
+#     """
 
-    try:
-        with pipeline.sql_client() as client:
-            results = client.execute_sql(query)
+#     try:
+#         with pipeline.sql_client() as client:
+#             results = client.execute_sql(query)
 
-            if not results:
-                logger.info("Không có dữ liệu để thống kê eff_status_id.")
-                return []
+#             if not results:
+#                 logger.info("Không có dữ liệu để thống kê eff_status_id.")
+#                 return []
 
-            logger.success("Đã lấy thành công thống kê eff_status_id")
-            for total_all, total_not_null, total_null in results:
-                logger.info(
-                    f"Tổng tất cả={total_all}, không NULL={total_not_null}, NULL={total_null}"
-                )
+#             logger.success("Đã lấy thành công thống kê eff_status_id")
+#             for total_all, total_not_null, total_null in results:
+#                 logger.info(
+#                     f"Tổng tất cả={total_all}, không NULL={total_not_null}, NULL={total_null}"
+#                 )
 
-            return results
+#             return results
 
-    except Exception as e:
-        if "does not exist" in str(e):
-            logger.warning("Bảng public.documents chưa được tạo.")
-            return []
-        logger.error(f"Lỗi database khi lấy thống kê NULL: {e}")
-        raise
+#     except Exception as e:
+#         if "does not exist" in str(e):
+#             logger.warning("Bảng public.documents chưa được tạo.")
+#             return []
+#         logger.error(f"Lỗi database khi lấy thống kê NULL: {e}")
+#         raise
 
 
 def get_null_eff_status_documents(

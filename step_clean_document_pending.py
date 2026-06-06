@@ -7,7 +7,6 @@ from loguru import logger
 from utils.config_by_path import ConfigByPath
 from utils.workflow_helper import (
     check_status_with_document_count,
-    get_document_eff_status_summary,
     get_document_state_count_by_workflow,
     log_error_workflow_state,
 )
@@ -61,7 +60,7 @@ def main():
     else:
         logger.info("Không có document nào bị treo.")
 
-    get_document_eff_status_summary(pipeline)
+    # get_document_eff_status_summary(pipeline)
 
     get_document_state_count_by_workflow(pipeline)
 
