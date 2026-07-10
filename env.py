@@ -83,4 +83,8 @@ CLOUDFLARE_API_TOKEN = env.str("CLOUDFLARE_API_TOKEN")
 GROQ_API_KEY = env.str("GROQ_API_KEY")
 
 
-PROXY_GATEWAYS = ["20206205.work.gd", "toeic.work.gd", "hust.work.gd"]
+PROXY_GATEWAYS = [
+    "20206205.work.gd",
+    "toeic.work.gd",
+    # "hust.work.gd"
+]
